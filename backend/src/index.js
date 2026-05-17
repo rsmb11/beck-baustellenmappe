@@ -31,6 +31,8 @@ app.use('/api', require('./routes/folders'));
 app.use('/api/access-codes', require('./routes/accessCodes'));
 app.use('/api/wiki', require('./routes/wiki'));
 app.use('/api/settings', require('./routes/settings'));
+app.use('/api/form-templates', require('./routes/forms'));
+app.use('/api/projects/:projectId/forms', require('./routes/forms'));
 
 // Health-Check
 app.get('/api/health', (req, res) => res.json({ ok: true, ts: new Date().toISOString() }));
@@ -45,3 +47,4 @@ if (fs.existsSync(FRONTEND)) {
 
 const PORT = process.env.PORT || 3004;
 app.listen(PORT, () => console.log(`Beck Baustellenmappe Backend läuft auf Port ${PORT}`));
+
