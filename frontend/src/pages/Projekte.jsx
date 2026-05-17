@@ -5,7 +5,7 @@ import {
   IconPlus, IconArrowLeft, IconFiles, IconNotebook, IconInfoCircle,
   IconUpload, IconCamera, IconFolder, IconFolderOpen, IconFile,
   IconFileTypePdf, IconFileDescription, IconTrash,
-  IconChevronRight, IconChevronDown, IconLock, IconSettings
+  IconChevronRight, IconChevronDown, IconLock, IconSettings, IconClipboardList
 } from '@tabler/icons-react'
 
 const TYPES = { heizung:'Heizung', sanitaer:'Sanitär', klima:'Klima', wartung:'Wartung', sonstiges:'Sonstiges' }
@@ -219,7 +219,7 @@ function ProjektDetail() {
       </div>
 
       <div style={{ display:'flex', borderBottom:'0.5px solid #DDD8D0', marginBottom:14 }}>
-        {[['dateien','Dateien',IconFiles],['doku','Dokumentation',IconNotebook],['info','Info',IconInfoCircle]].map(([key,label,Icon]) => (
+        {[['dateien','Dateien',IconFiles],['doku','Dokumentation',IconNotebook],['formulare','Formulare',IconClipboardList],['info','Info',IconInfoCircle]].map(([key,label,Icon]) => (
           <button key={key} onClick={() => setTab(key)}
             style={{ flex:1, padding:'9px 4px', fontSize:12, border:'none', background:'none', cursor:'pointer',
               color: tab===key ? '#1D9E75' : '#888780',
@@ -231,9 +231,10 @@ function ProjektDetail() {
         ))}
       </div>
 
-      {tab === 'dateien' && <DateienTab projectId={id} />}
-      {tab === 'doku'    && <DokuTab    projectId={id} />}
-      {tab === 'info'    && <InfoTab    project={project} />}
+      {tab === 'dateien'   && <DateienTab projectId={id} />}
+      {tab === 'doku'      && <DokuTab    projectId={id} />}
+      {tab === 'formulare' && <FormulareTab projectId={id} />}
+      {tab === 'info'      && <InfoTab    project={project} />}
     </div>
   )
 }
@@ -603,6 +604,92 @@ function DokuTab({ projectId }) {
           <div style={{ textAlign:'center', padding:32, color:'#888780', fontSize:13 }}>Noch keine Einträge</div>
         )}
       </div>
+    </div>
+  )
+}
+
+function FormulareTab({ projectId }) {
+  const navigate = useNavigate()
+  const [forms, setForms]       = useState([])
+  const [templates, setTemplates] = useState([])
+  const [loading, setLoading]   = useState(true)
+  const [showPicker, setShowPicker] = useState(false)
+
+  useEffect(() => {
+    Promise.all([
+      api.get('/projects/' + projectId + '/forms'),
+      api.get('/form-templates')
+    ]).then(([f, t]) => { setForms(f.data); setTemplates(t.data) })
+    .finally(() => setLoading(false))
+  }, [projectId])
+
+  async function deleteForm(e, id) {
+    e.stopPropagation()
+    if (!confirm('Formular löschen?')) return
+    await api.delete('/projects/' + projectId + '/forms/' + id)
+    setForms(prev => prev.filter(f => f.id !== id))
+  }
+
+  return (
+    <div>
+      <div style={{ display:'flex', justifyContent:'flex-end', marginBottom:12 }}>
+        <button className="btn btn-primary btn-sm" onClick={() => setShowPicker(true)}>
+          <IconPlus size={13} /> Neues Formular
+        </button>
+      </div>
+
+      {loading && <div style={{ textAlign:'center', padding:24 }}><div className="spinner" /></div>}
+
+      <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+        {forms.map(f => (
+          <div key={f.id} className="card"
+            onClick={() => navigate('/formulare/' + projectId + '/' + f.id)}
+            style={{ padding:'12px 14px', display:'flex', alignItems:'center', gap:12, cursor:'pointer' }}>
+            <div style={{ width:36, height:36, borderRadius:9, background:'#E1F5EE', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+              <IconClipboardList size={18} color="#0F6E56" />
+            </div>
+            <div style={{ flex:1, minWidth:0 }}>
+              <div style={{ fontSize:13, fontWeight:500 }}>{f.template_name}</div>
+              <div style={{ fontSize:11, color:'#888780', marginTop:2 }}>
+                {f.created_by_name} · {new Date(f.created_at).toLocaleDateString('de-DE')}
+                {f.signed_at && <span style={{ marginLeft:8, color:'#1D9E75' }}>✓ Unterschrieben</span>}
+              </div>
+            </div>
+            <button onClick={e => deleteForm(e, f.id)} style={{ background:'none', border:'none', cursor:'pointer', color:'#A32D2D', padding:4 }}>
+              <IconTrash size={14} />
+            </button>
+          </div>
+        ))}
+        {!loading && forms.length === 0 && (
+          <div style={{ textAlign:'center', padding:32, color:'#888780', fontSize:13 }}>
+            Noch keine Formulare
+          </div>
+        )}
+      </div>
+
+      {showPicker && (
+        <div className="modal-overlay">
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-head">
+              <span style={{ fontWeight:500 }}>Formular wählen</span>
+              <button className="btn btn-sm" onClick={() => setShowPicker(false)}>X</button>
+            </div>
+            <div className="modal-body">
+              {templates.map(t => (
+                <button key={t.id} className="card"
+                  onClick={() => { setShowPicker(false); navigate('/formulare/' + projectId + '/neu/' + t.id) }}
+                  style={{ width:'100%', padding:'12px 14px', display:'flex', alignItems:'center', gap:10, border:'none', cursor:'pointer', textAlign:'left', marginBottom:6 }}>
+                  <IconClipboardList size={18} color="#1D9E75" />
+                  <div>
+                    <div style={{ fontSize:13, fontWeight:500 }}>{t.name}</div>
+                    {t.description && <div style={{ fontSize:11, color:'#888780' }}>{t.description}</div>}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
