@@ -257,9 +257,20 @@ function DateienTab({ projectId }) {
   const selFolderObj=folders.find(f=>f.id===selFolder)
   const displayedFiles=selFolder===null?files:selFolder==='none'?files.filter(f=>!f.folder_id):files.filter(f=>f.folder_id===selFolder)
 
+  const [mobileView, setMobileView] = useState('ordner')
+
   return (
-    <div style={{ display:'flex',gap:12 }}>
-      <div style={{ width:190,flexShrink:0 }}>
+    <div>
+      <div style={{ display:'flex', borderBottom:'0.5px solid #DDD8D0', marginBottom:12 }}>
+        {[['ordner','📁 Ordner'],['dateien','🖼️ Dateien']].map(([v,l]) => (
+          <button key={v} onClick={() => setMobileView(v)}
+            style={{ flex:1, padding:'10px', fontSize:13, border:'none', background:'none', cursor:'pointer',
+              color: mobileView===v ? '#1D9E75' : '#888780',
+              borderBottom: mobileView===v ? '2px solid #1D9E75' : '2px solid transparent',
+              fontWeight: mobileView===v ? 500 : 400 }}>{l}</button>
+        ))}
+      </div>
+      {mobileView === 'ordner' && <div style={{ display:'flex',gap:12 }}><div style={{ width:190,flexShrink:0 }}>
         <div style={{ fontSize:11,color:'#888780',textTransform:'uppercase',letterSpacing:'0.07em',marginBottom:8 }}>Ordner</div>
         {[{id:null,label:'Alle Dateien',icon:<IconFiles size={15}/>,count:files.length},{id:'none',label:'Ohne Ordner',icon:<IconFile size={15}/>,count:files.filter(f=>!f.folder_id).length}].map(item=>(
           <div key={String(item.id)} onClick={()=>setSelFolder(item.id)}
@@ -324,6 +335,46 @@ function DateienTab({ projectId }) {
         {displayedFiles.length===0&&<div style={{ textAlign:'center',padding:32,color:'#888780',fontSize:13 }}>Keine Dateien</div>}
       </div>
       {showPermModal&&<PermissionsModal folder={showPermModal} projectId={projectId} onClose={()=>setShowPermModal(null)} onSave={()=>{setShowPermModal(null);loadAll()}}/>}
+    </div></div>}
+      {mobileView === 'dateien' && (
+        <div>
+          <div style={{ display:'flex',gap:8,marginBottom:12,alignItems:'center' }}>
+            <button className="btn btn-sm" onClick={() => setMobileView('ordner')} style={{ color:'#1D9E75' }}>&larr; Ordner</button>
+            <div style={{ fontSize:13,fontWeight:500,flex:1 }}>{selFolder===null?'Alle Dateien':selFolder==='none'?'Ohne Ordner':selFolderObj?.name}</div>
+            <label className="btn btn-primary btn-sm" style={{ cursor:'pointer' }}>
+              <IconUpload size={13}/> {uploading?'Lädt...':'Foto/Datei'}
+              <input type="file" multiple accept="image/*,.pdf,.doc,.docx" capture="environment" style={{ display:'none' }} onChange={handleUpload} disabled={uploading}/>
+            </label>
+          </div>
+          <div style={{ display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:10 }}>
+            {displayedFiles.map(f=>(
+              <div key={f.id} className="card" style={{ overflow:'hidden' }}>
+                <a href={`/uploads/${f.file_path}?token=${token}`} target="_blank" rel="noreferrer">
+                  <div style={{ aspectRatio:'4/3',background:'#F7F4F0',display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden' }}>
+                    {f.file_type==='foto'
+                      ?<img src={`/uploads/${f.file_path}?token=${token}`} alt={f.original_name} style={{ width:'100%',height:'100%',objectFit:'cover' }} onError={e=>e.target.src=''}/>
+                      :f.mime_type==='application/pdf'?<IconFileTypePdf size={36} color="#A32D2D"/>:<IconFileDescription size={36} color="#185FA5"/>}
+                  </div>
+                </a>
+                <div style={{ padding:'8px 10px',display:'flex',alignItems:'center',gap:6 }}>
+                  <div style={{ flex:1,minWidth:0 }}>
+                    <div style={{ fontSize:12,fontWeight:500,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{f.original_name}</div>
+                    <div style={{ fontSize:10,color:'#888780' }}>{new Date(f.created_at).toLocaleDateString('de-DE')}</div>
+                  </div>
+                  <button onClick={()=>deleteFile(f.id)} style={{ background:'none',border:'none',cursor:'pointer',color:'#A32D2D',padding:4 }}>
+                    <IconTrash size={14}/>
+                  </button>
+                </div>
+              </div>
+            ))}
+            <label className="card" style={{ aspectRatio:'4/3',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:'pointer',borderStyle:'dashed' }}>
+              <IconPlus size={28} color="#1D9E75"/><span style={{ fontSize:12,color:'#888780',marginTop:6 }}>Hinzufügen</span>
+              <input type="file" multiple accept="image/*,.pdf,.doc,.docx" style={{ display:'none' }} onChange={handleUpload}/>
+            </label>
+          </div>
+          {displayedFiles.length===0&&<div style={{ textAlign:'center',padding:32,color:'#888780',fontSize:13 }}>Keine Dateien</div>}
+        </div>
+      )}
     </div>
   )
 }
