@@ -388,3 +388,106 @@ ON CONFLICT DO NOTHING;
 -- Projektnummer
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS project_number VARCHAR(50);
 CREATE INDEX IF NOT EXISTS idx_projects_number ON projects(project_number);
+
+-- ============================================================
+-- FORMULARE / CHECKLISTEN
+-- ============================================================
+
+-- Formular-Vorlagen (z.B. "Druckprobe trocken", "Wartungsprotokoll")
+CREATE TABLE IF NOT EXISTS form_templates (
+    id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name        VARCHAR(200) NOT NULL,
+    description TEXT,
+    category    VARCHAR(50) DEFAULT 'sonstiges',
+    fields      JSONB NOT NULL DEFAULT '[]',  -- Felddefinitionen
+    created_by  UUID REFERENCES users(id) ON DELETE SET NULL,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Ausgefüllte Formulare (pro Projekt)
+CREATE TABLE IF NOT EXISTS form_entries (
+    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    project_id      UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    template_id     UUID REFERENCES form_templates(id) ON DELETE SET NULL,
+    template_name   VARCHAR(200) NOT NULL,
+    data            JSONB NOT NULL DEFAULT '{}',  -- ausgefüllte Werte
+    signature_customer  TEXT,  -- Base64 Unterschrift Auftraggeber
+    signature_contractor TEXT, -- Base64 Unterschrift Auftragnehmer
+    signed_at       TIMESTAMPTZ,
+    created_by      UUID REFERENCES users(id) ON DELETE SET NULL,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_form_entries_project ON form_entries(project_id);
+CREATE INDEX IF NOT EXISTS idx_form_entries_template ON form_entries(template_id);
+
+-- Standard Druckprobe Vorlage einfügen
+INSERT INTO form_templates (name, description, category, fields) VALUES
+('Druckprobenprotokoll Trinkwasser (trocken)',
+ 'Prüfmethode trocken – Prüfmedium Druckluft oder Inertgas (Viega)',
+ 'sanitaer',
+ '[
+   {"id":"bauvorhaben","type":"text","label":"Bauvorhaben / Bauabschnitt","required":true},
+   {"id":"auftraggeber","type":"text","label":"Auftraggeber / Vertreter","required":true},
+   {"id":"auftragnehmer","type":"text","label":"Auftragnehmer / Vertreter","required":true},
+   {"id":"werkstoff","type":"text","label":"Werkstoff des Rohrleitungssystems","required":false},
+   {"id":"anlagendruck","type":"number","label":"Anlagendruck (bar)","required":true},
+   {"id":"pruefmedium","type":"select","label":"Prüfmedium","options":["Druckluft ölfrei","Stickstoff","CO2"],"required":true},
+   {"id":"umgebungstemperatur","type":"number","label":"Umgebungstemperatur (°C)","required":true},
+   {"id":"temperatur_pruefmedium","type":"number","label":"Temperatur Prüfmedium (°C)","required":true},
+   {"id":"gesamtanlage","type":"select","label":"Geprüft als","options":["Gesamtanlage","Teilabschnitte"],"required":true},
+   {"id":"leitungsvolumen","type":"number","label":"Leitungsvolumen (Liter)","required":true},
+   {"id":"pruefzeit","type":"number","label":"Prüfzeit (Minuten)","required":true},
+   {"id":"dichtheitspruefung_ok","type":"checkbox","label":"Keine Undichtigkeit festgestellt (Dichtheitsprüfung 150 mbar)","required":true},
+   {"id":"belastungspruefung_dn","type":"select","label":"Belastungsprüfung DN","options":["DN ≤ 50 (Prüfdruck 3 bar)","DN > 50 (Prüfdruck 1 bar)"],"required":true},
+   {"id":"belastungspruefung_ok","type":"checkbox","label":"Belastungsprüfung bestanden (10 Minuten)","required":true},
+   {"id":"bemerkungen","type":"textarea","label":"Bemerkungen","required":false},
+   {"id":"ort","type":"text","label":"Ort","required":true},
+   {"id":"datum","type":"date","label":"Datum","required":true}
+ ]'::jsonb
+),
+('Heizungsabnahme',
+ 'Abnahmeprotokoll für Heizungsanlagen',
+ 'heizung',
+ '[
+   {"id":"kunde","type":"text","label":"Kunde","required":true},
+   {"id":"adresse","type":"text","label":"Adresse der Anlage","required":true},
+   {"id":"hersteller","type":"text","label":"Hersteller / Typ","required":true},
+   {"id":"seriennummer","type":"text","label":"Seriennummer","required":false},
+   {"id":"baujahr","type":"text","label":"Baujahr","required":false},
+   {"id":"betriebsdruck","type":"number","label":"Betriebsdruck (bar)","required":true},
+   {"id":"vorlauftemp","type":"number","label":"Vorlauftemperatur (°C)","required":true},
+   {"id":"ruecklauftemp","type":"number","label":"Rücklauftemperatur (°C)","required":true},
+   {"id":"abgastemperatur","type":"number","label":"Abgastemperatur (°C)","required":false},
+   {"id":"co2_gehalt","type":"number","label":"CO2-Gehalt (%)","required":false},
+   {"id":"maengel","type":"textarea","label":"Festgestellte Mängel","required":false},
+   {"id":"mängel_behoben","type":"checkbox","label":"Mängel wurden behoben","required":false},
+   {"id":"einweisung","type":"checkbox","label":"Einweisung des Kunden erfolgt","required":true},
+   {"id":"bemerkungen","type":"textarea","label":"Bemerkungen","required":false},
+   {"id":"ort","type":"text","label":"Ort","required":true},
+   {"id":"datum","type":"date","label":"Datum","required":true}
+ ]'::jsonb
+),
+('Wartungsprotokoll Heizung',
+ 'Jährliches Wartungsprotokoll für Heizungsanlagen',
+ 'heizung',
+ '[
+   {"id":"kunde","type":"text","label":"Kunde","required":true},
+   {"id":"adresse","type":"text","label":"Adresse","required":true},
+   {"id":"anlage","type":"text","label":"Anlage / Typ","required":true},
+   {"id":"seriennummer","type":"text","label":"Seriennummer","required":false},
+   {"id":"betriebsstunden","type":"number","label":"Betriebsstunden","required":false},
+   {"id":"filter_gereinigt","type":"checkbox","label":"Filter gereinigt","required":false},
+   {"id":"brenner_gereinigt","type":"checkbox","label":"Brenner gereinigt","required":false},
+   {"id":"elektroden_geprueft","type":"checkbox","label":"Elektroden geprüft / eingestellt","required":false},
+   {"id":"dichtheit_geprueft","type":"checkbox","label":"Dichtheit geprüft","required":false},
+   {"id":"betriebsdruck","type":"number","label":"Betriebsdruck (bar)","required":true},
+   {"id":"abgastemperatur","type":"number","label":"Abgastemperatur (°C)","required":false},
+   {"id":"co2","type":"number","label":"CO2-Gehalt (%)","required":false},
+   {"id":"naechste_wartung","type":"date","label":"Nächste Wartung","required":false},
+   {"id":"maengel","type":"textarea","label":"Mängel / Empfehlungen","required":false},
+   {"id":"ort","type":"text","label":"Ort","required":true},
+   {"id":"datum","type":"date","label":"Datum","required":true}
+ ]'::jsonb
+)
+ON CONFLICT DO NOTHING;
