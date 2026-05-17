@@ -29,7 +29,7 @@ export default function App() {
             <Route path="projekte/*"   element={<Projekte />} />
             <Route path="dateien"      element={<Dateien />} />
             <Route path="doku"         element={<Doku />} />
-            <Route path="wiki"         element={<Wiki />} />
+            <Route path="wiki/*"       element={<Wiki />} />
             <Route path="berichte"     element={<Berichte />} />
             <Route path="zugangscodes" element={<Zugangscodes />} />
             <Route path="benutzer"     element={<Benutzer />} />
