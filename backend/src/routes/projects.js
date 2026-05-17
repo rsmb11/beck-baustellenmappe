@@ -108,4 +108,4 @@ router.delete('/:id', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Serverfehler' }); }
 });
 
-module.exports = router;1
+module.exports = router;
