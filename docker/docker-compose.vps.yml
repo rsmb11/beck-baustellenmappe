@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: beck-baustellenmappe-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       baustellenmappe
+      POSTGRES_USER:     beck
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../database/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+    expose:
+      - "5432"
+    networks:
+      - baustellenmappe
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: beck-baustellenmappe-backend
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    environment:
+      DB_HOST:           postgres
+      DB_PORT:           5432
+      DB_NAME:           baustellenmappe
+      DB_USER:           beck
+      DB_PASSWORD:       ${DB_PASSWORD}
+      PORT:              3004
+      JWT_SECRET:        ${JWT_SECRET}
+      UPLOAD_PATH:       /uploads
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      CORS_ORIGIN:       ${CORS_ORIGIN}
+    volumes:
+      - /opt/beck-baustellenmappe/uploads:/uploads
+    ports:
+      - "127.0.0.1:3004:3004"
+    networks:
+      - baustellenmappe
+
+volumes:
+  postgres_data:
+
+networks:
+  baustellenmappe:
+    name: beck-baustellenmappe

@@ -1,0 +1,57 @@
+version: '3.8'
+
+# ============================================================
+# Beck Baustellenmappe – Synology NAS Produktion
+# Nutzung: docker-compose -f docker/docker-compose.synology.yml up -d
+# Dateien liegen auf NAS-Dateisystem (kein Docker-Volume)
+# ============================================================
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: beck-baustellenmappe-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       baustellenmappe
+      POSTGRES_USER:     beck
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      # NAS-Pfad: Synology Shared Folder "baustellenmappe"
+      - /volume1/baustellenmappe/db:/var/lib/postgresql/data
+      - ../database/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+    expose:
+      - "5432"
+    networks:
+      - baustellenmappe
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: beck-baustellenmappe-backend
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    environment:
+      DB_HOST:           postgres
+      DB_PORT:           5432
+      DB_NAME:           baustellenmappe
+      DB_USER:           beck
+      DB_PASSWORD:       ${DB_PASSWORD}
+      PORT:              3004
+      JWT_SECRET:        ${JWT_SECRET}
+      # Uploads direkt im NAS-Dateisystem – sichtbar im Explorer!
+      UPLOAD_PATH:       /uploads
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      CORS_ORIGIN:       ${CORS_ORIGIN:-http://192.168.1.50}
+    volumes:
+      # NAS Shared Folder direkt eingebunden
+      - /volume1/baustellenmappe/uploads:/uploads
+    ports:
+      - "3004:3004"
+    networks:
+      - baustellenmappe
+
+networks:
+  baustellenmappe:
+    name: beck-baustellenmappe
