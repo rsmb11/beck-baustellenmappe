@@ -16,16 +16,9 @@ router.get('/', auth, async (req, res) => {
       LEFT JOIN entries e ON e.project_id = p.id
       LEFT JOIN files f ON f.project_id = p.id`;
 
-    if (req.user.role === 'admin') {
-      query = `${base} WHERE p.archived = $1 GROUP BY p.id, c.name ORDER BY p.updated_at DESC`;
-      params = [archived];
-    } else {
-      query = `${base}
-        INNER JOIN project_members pm ON pm.project_id = p.id AND pm.user_id = $1
-        WHERE p.archived = $2
-        GROUP BY p.id, c.name ORDER BY p.updated_at DESC`;
-      params = [req.user.id, archived];
-    }
+    // Alle Benutzer sehen alle Projekte
+    query = `${base} WHERE p.archived = $1 GROUP BY p.id, c.name ORDER BY p.updated_at DESC`;
+    params = [archived];
     const { rows } = await pool.query(query, params);
     res.json(rows);
   } catch (err) {
