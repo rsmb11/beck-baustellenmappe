@@ -51,15 +51,15 @@ router.get('/:id', auth, async (req, res) => {
 
 // POST /api/projects
 router.post('/', auth, async (req, res) => {
-  const { title, description, address, city, zip, project_type, status, start_date, end_date, customer_id, notes, member_ids } = req.body;
+  const { title, description, address, city, zip, project_type, status, start_date, end_date, customer_id, notes, member_ids, project_number } = req.body;
   if (!title) return res.status(400).json({ error: 'Titel erforderlich' });
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     const { rows } = await client.query(`
-      INSERT INTO projects (title, description, address, city, zip, project_type, status, start_date, end_date, customer_id, notes, created_by)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
-      [title, description, address, city, zip, project_type||'sonstiges', status||'geplant', start_date, end_date, customer_id, notes, req.user.id]);
+      INSERT INTO projects (title, description, address, city, zip, project_type, status, start_date, end_date, customer_id, notes, project_number, created_by)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
+      [title, description, address, city, zip, project_type||'sonstiges', status||'geplant', start_date, end_date, customer_id, notes, project_number||null, req.user.id]);
     const project = rows[0];
     const ids = [...new Set([req.user.id, ...(member_ids||[])])];
     for (const uid of ids) {
@@ -75,13 +75,13 @@ router.post('/', auth, async (req, res) => {
 
 // PUT /api/projects/:id
 router.put('/:id', auth, async (req, res) => {
-  const { title, description, address, city, zip, project_type, status, start_date, end_date, customer_id, notes } = req.body;
+  const { title, description, address, city, zip, project_type, status, start_date, end_date, customer_id, notes, project_number } = req.body;
   try {
     const { rows } = await pool.query(`
       UPDATE projects SET title=$1, description=$2, address=$3, city=$4, zip=$5,
-        project_type=$6, status=$7, start_date=$8, end_date=$9, customer_id=$10, notes=$11
-      WHERE id=$12 RETURNING *`,
-      [title, description, address, city, zip, project_type, status, start_date, end_date, customer_id, notes, req.params.id]);
+        project_type=$6, status=$7, start_date=$8, end_date=$9, customer_id=$10, notes=$11, project_number=$12
+      WHERE id=$13 RETURNING *`,
+      [title, description, address, city, zip, project_type, status, start_date, end_date, customer_id, notes, project_number||null, req.params.id]);
     if (!rows[0]) return res.status(404).json({ error: 'Nicht gefunden' });
     res.json(rows[0]);
   } catch (err) { res.status(500).json({ error: 'Serverfehler' }); }

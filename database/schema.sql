@@ -384,3 +384,7 @@ INSERT INTO settings (key, value, description) VALUES
 ('file_server_user',     '', 'Benutzername für Dateiserver-Login'),
 ('file_server_password', '', 'Passwort für Dateiserver-Login (wird verschlüsselt gespeichert)')
 ON CONFLICT DO NOTHING;
+
+-- Projektnummer
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS project_number VARCHAR(50);
+CREATE INDEX IF NOT EXISTS idx_projects_number ON projects(project_number);
