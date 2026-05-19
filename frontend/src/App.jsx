@@ -12,6 +12,7 @@ import Zugangscodes  from './pages/Zugangscodes'
 import Wiki          from './pages/Wiki'
 import Einstellungen from './pages/Einstellungen'
 import Formulare     from './pages/Formulare'
+import Dokumente     from './pages/Dokumente'
 import './index.css'
 
 function Protected({ children }) {
@@ -36,6 +37,7 @@ export default function App() {
             <Route path="benutzer"     element={<Benutzer />} />
             <Route path="einstellungen" element={<Einstellungen />} />
             <Route path="formulare/*"  element={<Formulare />} />
+            <Route path="dokumente"    element={<Dokumente />} />
           </Route>
         </Routes>
       </BrowserRouter>
