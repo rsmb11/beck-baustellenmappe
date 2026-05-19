@@ -33,6 +33,7 @@ app.use('/api/wiki', require('./routes/wiki'));
 app.use('/api/settings', require('./routes/settings'));
 app.use('/api/form-templates', require('./routes/forms'));
 app.use('/api/projects/:projectId/forms', require('./routes/forms'));
+app.use('/api/docs', require('./routes/docs'));
 
 // Health-Check
 app.get('/api/health', (req, res) => res.json({ ok: true, ts: new Date().toISOString() }));
