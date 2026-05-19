@@ -48,6 +48,15 @@ export default function Benutzer() {
     }
   }
 
+  async function deleteUser(u) {
+    if (!confirm(`Benutzer "${u.name}" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`)) return
+    try {
+      await api.delete(`/users/${u.id}/permanent`)
+      showToast(`${u.name} gelöscht`)
+      loadUsers()
+    } catch (err) { showToast(err.response?.data?.error || 'Fehler', 'error') }
+  }
+
   const initials = u => u.name.split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase()
 
   return (
@@ -108,6 +117,10 @@ export default function Benutzer() {
                 <button className="btn btn-sm" title={u.active ? 'Deaktivieren' : 'Aktivieren'} onClick={() => toggleActive(u)}
                   style={{ color: u.active ? '#A32D2D' : '#1D9E75' }}>
                   {u.active ? <IconUserOff size={13} /> : <IconUserCheck size={13} />}
+                </button>
+                <button className="btn btn-sm" title="Löschen" onClick={() => deleteUser(u)}
+                  style={{ color:'#A32D2D' }}>
+                  <IconTrash size={13} />
                 </button>
               </div>
             )}
