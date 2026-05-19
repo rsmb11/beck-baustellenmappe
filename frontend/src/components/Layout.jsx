@@ -2,7 +2,8 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../AuthContext'
 import {
   IconHome, IconFolder, IconNotebook, IconSparkles,
-  IconLogout, IconTool, IconUsers, IconKey, IconBook, IconSettings
+  IconLogout, IconTool, IconUsers, IconKey, IconBook,
+  IconSettings, IconBooks
 } from '@tabler/icons-react'
 
 export default function Layout() {
@@ -17,6 +18,7 @@ export default function Layout() {
     { to: '/doku',         icon: IconNotebook, label: 'Doku'     },
     { to: '/wiki',         icon: IconBook,     label: 'Wiki'     },
     { to: '/zugangscodes', icon: IconKey,      label: 'Codes'    },
+    { to: '/dokumente',    icon: IconBooks,    label: 'Docs'     },
     { to: '/berichte',     icon: IconSparkles, label: 'KI'       },
     ...(user?.role === 'admin' ? [
       { to: '/benutzer',      icon: IconUsers,    label: 'Benutzer' },
