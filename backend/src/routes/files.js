@@ -119,3 +119,36 @@ router.delete('/:id', auth, async (req, res) => {
 });
 
 module.exports = router;
+
+// GET /api/projects/:projectId/files/download-all  – alle Dateien als ZIP
+router.get('/download-all', auth, async (req, res) => {
+  const { projectId } = req.params;
+  try {
+    const { rows: files } = await pool.query(
+      'SELECT * FROM files WHERE project_id = $1', [projectId]);
+    const { rows: project } = await pool.query(
+      'SELECT title FROM projects WHERE id = $1', [projectId]);
+
+    if (!files.length) return res.status(404).json({ error: 'Keine Dateien vorhanden' });
+
+    const archiver = require('archiver');
+    const archive  = archiver('zip', { zlib: { level: 6 } });
+    const title    = (project[0]?.title || 'Projekt').replace(/[^a-zA-Z0-9äöüÄÖÜ\-_]/g, '_');
+
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${title}.zip"`);
+    archive.pipe(res);
+
+    for (const f of files) {
+      const filePath = path.join(UPLOAD_BASE, f.file_path);
+      if (fs.existsSync(filePath)) {
+        archive.file(filePath, { name: f.original_name });
+      }
+    }
+
+    await archive.finalize();
+  } catch (err) {
+    console.error(err);
+    if (!res.headersSent) res.status(500).json({ error: 'Serverfehler' });
+  }
+});
