@@ -252,6 +252,10 @@ function DateienTab({ projectId }) {
   const me    = JSON.parse(localStorage.getItem('user') || '{}')
   const isAdmin = me.role === 'admin'
 
+  function downloadAll() {
+    window.open('/api/projects/' + projectId + '/files/download-all?token=' + token, '_blank')
+  }
+
   useEffect(() => { loadAll() }, [projectId])
 
   async function loadAll() {
@@ -307,7 +311,7 @@ function DateienTab({ projectId }) {
   return (
     <div>
       {/* Tab Umschalter */}
-      <div style={{ display:'flex', borderBottom:'0.5px solid #DDD8D0', marginBottom:14 }}>
+      <div style={{ display:'flex', borderBottom:'0.5px solid #DDD8D0', marginBottom:14, alignItems:'center' }}>
         <button onClick={() => setView('ordner')}
           style={{ flex:1, padding:'9px', fontSize:12, border:'none', background:'none', cursor:'pointer',
             color: view==='ordner' ? '#1D9E75' : '#888780',
@@ -322,6 +326,12 @@ function DateienTab({ projectId }) {
             fontWeight: view==='dateien' ? 500 : 400 }}>
           Dateien {selFolderObj ? '(' + selFolderObj.name + ')' : '(alle)'}
         </button>
+        <a href={'/api/projects/' + projectId + '/files/download-all?token=' + token}
+          target="_blank" rel="noreferrer"
+          className="btn btn-sm" style={{ margin:'0 4px', flexShrink:0, fontSize:11 }}
+          title="Alle Dateien als ZIP herunterladen">
+          ⬇ ZIP
+        </a>
       </div>
 
       {/* Ordner-Ansicht */}
