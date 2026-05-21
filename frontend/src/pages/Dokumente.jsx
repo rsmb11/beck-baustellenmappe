@@ -18,7 +18,7 @@ function FileIcon({ ext }) {
 }
 
 function FolderNode({ item, depth = 0 }) {
-  const [open, setOpen] = useState(depth === 0)
+  const [open, setOpen] = useState(false)
   const hasChildren = item.children?.length > 0
 
   return (
