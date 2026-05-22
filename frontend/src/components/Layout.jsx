@@ -1,8 +1,8 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../AuthContext'
 import {
-  IconHome, IconFolder, IconNotebook, IconSparkles,
-  IconLogout, IconTool, IconUsers, IconKey, IconBook,
+  IconHome2, IconFolderFilled, IconNotebook, IconSparkles,
+  IconLogout, IconTool, IconUsersGroup, IconKey, IconBook,
   IconSettings, IconBooks
 } from '@tabler/icons-react'
 
@@ -11,59 +11,72 @@ export default function Layout() {
   const navigate = useNavigate()
   function handleLogout() { logout(); navigate('/login') }
   const initials = user?.name?.split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase() || '?'
+  const firstName = user?.name?.split(' ')[0] || ''
 
   const tabs = [
-    { to: '/',             icon: IconHome,     label: 'Start',    end: true },
-    { to: '/projekte',     icon: IconFolder,   label: 'Projekte' },
-    { to: '/doku',         icon: IconNotebook, label: 'Doku'     },
-    { to: '/wiki',         icon: IconBook,     label: 'Wiki'     },
-    { to: '/zugangscodes', icon: IconKey,      label: 'Codes'    },
-    { to: '/dokumente',    icon: IconBooks,    label: 'Docs'     },
-    { to: '/berichte',     icon: IconSparkles, label: 'KI'       },
+    { to: '/',             icon: IconHome2,       label: 'Start',    end: true  },
+    { to: '/projekte',     icon: IconFolderFilled, label: 'Projekte'            },
+    { to: '/doku',         icon: IconNotebook,     label: 'Doku'                },
+    { to: '/wiki',         icon: IconBook,         label: 'Wiki'                },
+    { to: '/zugangscodes', icon: IconKey,          label: 'Codes'               },
+    { to: '/dokumente',    icon: IconBooks,        label: 'Docs'                },
+    { to: '/berichte',     icon: IconSparkles,     label: 'KI'                  },
     ...(user?.role === 'admin' ? [
-      { to: '/benutzer',      icon: IconUsers,    label: 'Benutzer' },
-      { to: '/einstellungen', icon: IconSettings, label: 'Config'   },
+      { to: '/benutzer',      icon: IconUsersGroup, label: 'Team'   },
+      { to: '/einstellungen', icon: IconSettings,   label: 'Config' },
     ] : []),
   ]
 
   return (
-    <div style={{ display:'flex', flexDirection:'column', minHeight:'100vh', maxWidth:960, margin:'0 auto' }}>
+    <div className="app-shell">
       {/* Header */}
-      <div style={{ background:'#111816', padding:'12px 16px', display:'flex', alignItems:'center', gap:10, flexShrink:0, position:'sticky', top:0, zIndex:100 }}>
-        <div style={{ width:36, height:36, borderRadius:10, background:'#1D9E75', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+      <header className="app-header">
+        <div className="app-logo">
           <IconTool size={18} color="#fff" />
         </div>
         <div>
-          <div style={{ fontSize:15, fontWeight:500, color:'#E8EDE9' }}>Beck Connect</div>
-          <div style={{ fontSize:10, color:'#6B7A72' }}>Beck Sanitär GmbH</div>
+          <div className="app-brand-name">Beck Connect</div>
+          <div className="app-brand-sub">Beck Sanitär GmbH</div>
         </div>
-        <div style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:10 }}>
-          <div style={{ width:32, height:32, borderRadius:'50%', background:'#1D9E75', color:'#fff', fontSize:12, fontWeight:600, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-            {initials}
-          </div>
-          <button onClick={handleLogout} style={{ background:'none', border:'none', cursor:'pointer', padding:6 }}>
-            <IconLogout size={20} color="#6B7A72" />
+        <div className="header-spacer" />
+        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+          {firstName && (
+            <div style={{ fontSize:12, color:'var(--text-3)', display:'none' }} className="desktop-only">
+              {firstName}
+            </div>
+          )}
+          <div className="avatar">{initials}</div>
+          <button className="header-btn" onClick={handleLogout} title="Abmelden">
+            <IconLogout size={18} />
           </button>
         </div>
-      </div>
+      </header>
 
-      <div style={{ flex:1, overflow:'auto', paddingBottom:72 }}>
+      {/* Content */}
+      <main className="page-content">
         <Outlet />
-      </div>
+      </main>
 
-      {/* Bottom Nav — größer für Handy */}
-      <div style={{ position:'fixed', bottom:0, left:'50%', transform:'translateX(-50%)', width:'100%', maxWidth:960, background:'#111816', display:'flex', zIndex:100, paddingBottom:'env(safe-area-inset-bottom,0px)' }}>
+      {/* Bottom Navigation */}
+      <nav className="bottom-nav">
         {tabs.map(({ to, icon: Icon, label, end }) => (
-          <NavLink key={to} to={to} end={end} style={{ flex:1 }}>
+          <NavLink
+            key={to}
+            to={to}
+            end={end}
+            className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+          >
             {({ isActive }) => (
-              <div style={{ padding:'10px 4px 8px', textAlign:'center', color: isActive ? '#1D9E75' : '#6B7A72', borderTop: isActive ? '2px solid #1D9E75' : '2px solid transparent', transition:'color 0.12s' }}>
-                <Icon size={22} style={{ display:'block', margin:'0 auto 3px' }} />
-                <div style={{ fontSize:10, fontWeight: isActive ? 500 : 400 }}>{label}</div>
-              </div>
+              <>
+                <div className="nav-icon">
+                  <Icon size={20} strokeWidth={isActive ? 2.2 : 1.8} />
+                </div>
+                <div className="nav-label">{label}</div>
+              </>
             )}
           </NavLink>
         ))}
-      </div>
+      </nav>
     </div>
   )
 }
