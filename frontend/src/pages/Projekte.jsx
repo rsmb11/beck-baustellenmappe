@@ -4,7 +4,7 @@ import api from '../api'
 import {
   IconPlus, IconArrowLeft, IconFiles, IconNotebook, IconInfoCircle,
   IconUpload, IconCamera, IconFolder, IconFolderOpen, IconFile,
-  IconFileTypePdf, IconFileDescription, IconTrash,
+  IconFileTypePdf, IconFileDescription, IconTrash, IconArchive,
   IconChevronRight, IconChevronDown, IconLock, IconSettings, IconClipboardList
 } from '@tabler/icons-react'
 
@@ -12,6 +12,180 @@ const TYPES = { heizung:'Heizung', sanitaer:'Sanitär', klima:'Klima', wartung:'
 const STATUS_OPTS = ['geplant','aktiv','abgeschlossen','pausiert']
 const TYPE_OPTS   = Object.keys(TYPES)
 
+// ── Type config für Smart Cards ──────────────────────────────────────────────
+const TYPE_CFG = {
+  heizung:  { accent: '#dc2626', accentL: '#f87171', bg: 'rgba(220,38,38,.13)', border: 'rgba(220,38,38,.22)',
+    icon: (c='#f87171') => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg> },
+  sanitaer: { accent: '#2563eb', accentL: '#60a5fa', bg: 'rgba(37,99,235,.13)',  border: 'rgba(37,99,235,.22)',
+    icon: (c='#60a5fa') => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/></svg> },
+  klima:    { accent: '#d97706', accentL: '#fbbf24', bg: 'rgba(217,119,6,.13)',  border: 'rgba(217,119,6,.22)',
+    icon: (c='#fbbf24') => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg> },
+  wartung:  { accent: '#7c3aed', accentL: '#a78bfa', bg: 'rgba(124,58,237,.13)', border: 'rgba(124,58,237,.22)',
+    icon: (c='#a78bfa') => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg> },
+  sonstiges:{ accent: '#0ea472', accentL: '#34d399', bg: 'rgba(14,164,114,.13)', border: 'rgba(14,164,114,.22)',
+    icon: (c='#34d399') => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg> },
+}
+
+function getWarnReason(p) {
+  if (!p.file_count || parseInt(p.file_count) === 0) return 'Noch keine Dateien hochgeladen'
+  if (p.status === 'aktiv' && p.notes?.toLowerCase().includes('wartung')) return 'Wartung prüfen'
+  return null
+}
+
+function fileAgeDot(lastFile) {
+  if (!lastFile) return '#4a5754'
+  const d = lastFile.days_ago || 0
+  if (d <= 1) return '#34d399'
+  if (d <= 7) return '#f59e0b'
+  return '#ef4444'
+}
+
+// ── Smart Project Card ────────────────────────────────────────────────────────
+function SmartProjektCard({ p, onArchive, onClick }) {
+  const [open, setOpen] = useState(false)
+  const cfg     = TYPE_CFG[p.project_type] || TYPE_CFG.sonstiges
+  const warn    = getWarnReason(p)
+  const progress= Math.min(100, Math.max(8, (parseInt(p.file_count) || 0) * 7))
+  const addr    = [p.address, p.city].filter(Boolean).join(', ')
+  const mapsUrl = `https://maps.google.com/?q=${encodeURIComponent(addr)}`
+  const phone   = p.phone || null
+
+  const cardStyle = {
+    background: warn ? 'rgba(239,68,68,0.04)' : 'rgba(255,255,255,0.042)',
+    border: warn
+      ? '1px solid rgba(239,68,68,0.35)'
+      : '0.5px solid rgba(255,255,255,0.09)',
+    borderRadius: 18,
+    marginBottom: 10,
+    overflow: 'hidden',
+    cursor: 'pointer',
+    transition: 'transform .18s, background .15s, box-shadow .18s',
+    animation: warn ? 'warnPulse 2.5s ease-in-out infinite' : 'none',
+  }
+
+  return (
+    <div style={cardStyle}>
+      {/* Shimmer accent bar */}
+      <div style={{
+        height: 3,
+        background: `linear-gradient(90deg, ${cfg.accent}, ${cfg.accentL})`,
+        position: 'relative', overflow: 'hidden',
+      }}>
+        <div style={{
+          position:'absolute', top:0, left:'-100%', width:'40%', height:'100%',
+          background:'linear-gradient(90deg,transparent,rgba(255,255,255,.45),transparent)',
+          animation:'shimAccent 3s ease-in-out infinite',
+        }}/>
+      </div>
+
+      {/* Body */}
+      <div style={{ padding:'13px 14px 14px' }} onClick={() => { setOpen(!open) }}>
+        <div style={{ display:'flex', alignItems:'flex-start', gap:10 }}>
+          {/* Type icon */}
+          <div style={{ width:40, height:40, borderRadius:12, background:cfg.bg, border:`0.5px solid ${cfg.border}`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+            {cfg.icon(cfg.accentL)}
+          </div>
+
+          {/* Info */}
+          <div style={{ flex:1, minWidth:0 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:3, flexWrap:'wrap' }}>
+              {p.project_number && (
+                <span style={{ fontSize:9, fontWeight:700, fontFamily:'monospace', color:cfg.accentL, background:cfg.bg, border:`0.5px solid ${cfg.border}`, padding:'2px 6px', borderRadius:5, flexShrink:0 }}>
+                  {p.project_number}
+                </span>
+              )}
+              <div style={{ fontSize:15, fontWeight:700, color:'#e8eeec', letterSpacing:'-0.02em', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                {p.title}
+              </div>
+            </div>
+            {addr && <div style={{ fontSize:11, color:'#4a5754', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{addr}</div>}
+          </div>
+
+          {/* Status badge */}
+          {warn ? (
+            <span style={{ flexShrink:0, fontSize:10, fontWeight:700, padding:'3px 8px', borderRadius:20, background:'rgba(239,68,68,.15)', color:'#f87171', border:'0.5px solid rgba(239,68,68,.3)', display:'flex', alignItems:'center', gap:4 }}>
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2.5" strokeLinecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              Aktion
+            </span>
+          ) : (
+            <span className={`pill pill-${p.status}`}>{p.status}</span>
+          )}
+        </div>
+
+        {/* Warn reason */}
+        {warn && (
+          <div style={{ display:'inline-flex', alignItems:'center', gap:5, marginTop:8, fontSize:10, fontWeight:700, background:'rgba(239,68,68,.1)', border:'0.5px solid rgba(239,68,68,.25)', color:'#f87171', borderRadius:8, padding:'4px 9px' }}>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2.5" strokeLinecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            {warn}
+          </div>
+        )}
+
+        {/* Progress + last file */}
+        <div style={{ marginTop:11 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:6 }}>
+            <div style={{ flex:1, height:4, background:'rgba(255,255,255,.05)', borderRadius:2, overflow:'hidden', position:'relative' }}>
+              <div style={{ height:'100%', borderRadius:2, background:`linear-gradient(90deg,${cfg.accent},${cfg.accentL})`, width:`${progress}%`, position:'relative', overflow:'hidden' }}>
+                <div style={{ position:'absolute', top:0, left:'-100%', width:'100%', height:'100%', background:'linear-gradient(90deg,transparent,rgba(255,255,255,.4),transparent)', animation:'shimAccent 2s ease-in-out infinite' }}/>
+              </div>
+            </div>
+            <span style={{ fontSize:10, color:'#4a5754', flexShrink:0 }}>{p.file_count} Dateien</span>
+          </div>
+
+          {/* Last file preview */}
+          {p.last_file_name ? (
+            <div style={{ display:'flex', alignItems:'center', gap:6, fontSize:11, color:'#546360', padding:'5px 8px', borderRadius:8, background:'rgba(255,255,255,0.03)', border:'0.5px solid rgba(255,255,255,0.06)' }}>
+              <div style={{ width:5, height:5, borderRadius:'50%', background:fileAgeDot(p.last_file), flexShrink:0 }}/>
+              <span style={{ color:'#4a5754', fontSize:10, flexShrink:0 }}>Zuletzt:</span>
+              <span style={{ color:'#8a9693', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', flex:1 }}>{p.last_file_name}</span>
+              {p.last_file_date && <span style={{ marginLeft:'auto', flexShrink:0, color:'#364240', fontSize:10 }}>{new Date(p.last_file_date).toLocaleDateString('de-DE',{day:'numeric',month:'short'})}</span>}
+            </div>
+          ) : (
+            <div style={{ display:'flex', alignItems:'center', gap:6, fontSize:11, color:'#364240', padding:'5px 8px', borderRadius:8, background:'rgba(255,255,255,0.02)', border:'0.5px solid rgba(255,255,255,0.05)' }}>
+              <div style={{ width:5, height:5, borderRadius:'50%', background:'#4a5754', flexShrink:0 }}/>
+              <span style={{ fontSize:10, color:'#364240' }}>Noch keine Dateien</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Quick Actions (expand on tap) */}
+      <div style={{
+        maxHeight: open ? 100 : 0,
+        overflow: 'hidden',
+        transition: 'max-height .28s cubic-bezier(.16,1,.3,1)',
+      }}>
+        <div style={{ padding:'0 14px 14px', borderTop:'0.5px solid rgba(255,255,255,.07)', paddingTop:10, display:'flex', gap:8 }}>
+          <a href={mapsUrl} target="_blank" rel="noreferrer"
+            onClick={e => e.stopPropagation()}
+            style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:7, padding:'10px 12px', borderRadius:12, fontSize:12, fontWeight:700, background:'rgba(14,164,114,.14)', color:'#34d399', border:'0.5px solid rgba(14,164,114,.25)', textDecoration:'none', transition:'all .18s' }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="2.2" strokeLinecap="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            Route starten
+          </a>
+          {phone ? (
+            <a href={`tel:${phone}`} onClick={e => e.stopPropagation()}
+              style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:7, padding:'10px 12px', borderRadius:12, fontSize:12, fontWeight:700, background:'rgba(37,99,235,.14)', color:'#60a5fa', border:'0.5px solid rgba(37,99,235,.25)', textDecoration:'none', transition:'all .18s' }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2.2" strokeLinecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.6 3.36 2 2 0 0 1 3.59 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 5.55 5.55l1.02-.93a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21 16.92z"/></svg>
+              Anrufen
+            </a>
+          ) : (
+            <button onClick={e => { e.stopPropagation(); window.location.href = '/projekte/' + p.id }}
+              style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:7, padding:'10px 12px', borderRadius:12, fontSize:12, fontWeight:700, background:'rgba(255,255,255,.05)', color:'#8a9693', border:'0.5px solid rgba(255,255,255,.09)', cursor:'pointer' }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8a9693" strokeWidth="2.2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+              Öffnen
+            </button>
+          )}
+          <button onClick={e => { e.stopPropagation(); onArchive(e, p) }}
+            style={{ width:42, height:42, borderRadius:12, background:'rgba(255,255,255,.04)', border:'0.5px solid rgba(255,255,255,.09)', display:'flex', alignItems:'center', justifyContent:'center', color:'#4a5754', cursor:'pointer', flexShrink:0 }}
+            title={p.archived ? 'Wiederherstellen' : 'Archivieren'}>
+            <IconArchive size={16} color={p.archived ? '#34d399' : '#4a5754'} />
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── ProjektListe ──────────────────────────────────────────────────────────────
 function ProjektListe() {
   const navigate = useNavigate()
   const [projects, setProjects]     = useState([])
@@ -32,14 +206,35 @@ function ProjektListe() {
     load()
   }
 
+  const warnCount = projects.filter(p => getWarnReason(p)).length
+
   return (
     <div style={{ padding:14 }}>
+      {/* CSS for shimmer + warn pulse */}
+      <style>{`
+        @keyframes shimAccent { 0%{left:-100%} 100%{left:200%} }
+        @keyframes warnPulse {
+          0%,100%{box-shadow:0 0 0 2px rgba(239,68,68,.2)}
+          50%{box-shadow:0 0 0 4px rgba(239,68,68,.35),0 0 16px rgba(239,68,68,.12)}
+        }
+      `}</style>
+
+      {/* Header */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
-        <div style={{ fontSize:17, fontWeight:500 }}>{showArchiv ? 'Archiv' : 'Projekte'}</div>
+        <div>
+          <div style={{ fontSize:17, fontWeight:700, letterSpacing:'-0.02em' }}>
+            {showArchiv ? '📦 Archiv' : 'Projekte'}
+          </div>
+          {warnCount > 0 && !showArchiv && (
+            <div style={{ fontSize:11, color:'#f87171', marginTop:2, display:'flex', alignItems:'center', gap:4 }}>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2.5" strokeLinecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              {warnCount} Projekt{warnCount !== 1 ? 'e' : ''} mit Handlungsbedarf
+            </div>
+          )}
+        </div>
         <div style={{ display:'flex', gap:6 }}>
-          <button className="btn btn-sm" onClick={() => setShowArchiv(!showArchiv)}
-            style={{ background: showArchiv ? '#232927' : '#fff', color: showArchiv ? '#9FE1CB' : '#5F5E5A' }}>
-            {showArchiv ? 'Aktive anzeigen' : 'Archiv'}
+          <button className="btn btn-sm" onClick={() => setShowArchiv(!showArchiv)}>
+            {showArchiv ? '← Aktive' : '📦 Archiv'}
           </button>
           {!showArchiv && (
             <button className="btn btn-primary btn-sm" onClick={() => setShowNew(true)}>
@@ -48,39 +243,35 @@ function ProjektListe() {
           )}
         </div>
       </div>
-      {loading && <div style={{ textAlign:'center', padding:32 }}><div className="spinner" /></div>}
-      <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-        {projects.map(p => (
-          <button key={p.id} className="card" onClick={() => navigate('/projekte/' + p.id)}
-            style={{ padding:'12px 14px', display:'flex', alignItems:'center', gap:12, border:'none', cursor:'pointer', width:'100%', textAlign:'left' }}>
-            <div style={{ flex:1, minWidth:0 }}>
-              <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:2 }}>
-                {p.project_number && (
-                  <span style={{ fontSize:10, background:'#F5F3EF', color:'#888780', padding:'1px 6px', borderRadius:5, fontFamily:'monospace', flexShrink:0 }}>
-                    {p.project_number}
-                  </span>
-                )}
-                <div style={{ fontSize:14, fontWeight:500, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.title}</div>
-              </div>
-              <div style={{ fontSize:11, color:'#888780' }}>{p.address}{p.city ? ', ' + p.city : ''} · {TYPES[p.project_type] || p.project_type}</div>
+
+      {/* Skeleton loader */}
+      {loading && (
+        <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+          {[1,2,3].map(i => (
+            <div key={i} style={{ height:110, borderRadius:18, background:'linear-gradient(90deg,rgba(255,255,255,0.04) 25%,rgba(255,255,255,0.08) 50%,rgba(255,255,255,0.04) 75%)', backgroundSize:'200% 100%', animation:'warnPulse 1.5s ease-in-out infinite' }}/>
+          ))}
+        </div>
+      )}
+
+      {/* Smart Cards */}
+      {!loading && (
+        <div>
+          {projects.map(p => (
+            <SmartProjektCard
+              key={p.id}
+              p={p}
+              onArchive={toggleArchive}
+              onClick={() => navigate('/projekte/' + p.id)}
+            />
+          ))}
+          {projects.length === 0 && (
+            <div className="card" style={{ padding:32, textAlign:'center', color:'#888780', fontSize:13 }}>
+              {showArchiv ? 'Keine archivierten Projekte' : 'Keine aktiven Projekte'}
             </div>
-            <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:4, flexShrink:0 }}>
-              <span className={'pill pill-' + p.status}>{p.status}</span>
-              <div style={{ fontSize:10, color:'#888780' }}>{p.file_count} Dateien</div>
-            </div>
-            <button onClick={e => toggleArchive(e, p)}
-              style={{ background:'none', border:'none', cursor:'pointer', padding:'4px', color:'#888780', flexShrink:0 }}
-              title={p.archived ? 'Wiederherstellen' : 'Archivieren'}>
-              {p.archived ? 'R' : 'A'}
-            </button>
-          </button>
-        ))}
-        {!loading && projects.length === 0 && (
-          <div className="card" style={{ padding:32, textAlign:'center', color:'#888780', fontSize:13 }}>
-            {showArchiv ? 'Keine archivierten Projekte' : 'Keine aktiven Projekte'}
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
+
       {showNew && (
         <NeuesProjektModal
           onClose={() => setShowNew(false)}
