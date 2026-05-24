@@ -6,7 +6,7 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=DM+Mono:wght@400;500&display=swap');
 
 :root {
-  --bg:          #09090b;
+  --bg:          #535359;
   --s1:          rgba(30,30,36,0.92);
   --s2:          rgba(38,38,46,0.95);
   --s3:          rgba(40,40,46,0.95);
